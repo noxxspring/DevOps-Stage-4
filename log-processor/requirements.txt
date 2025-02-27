@@ -1,0 +1,6 @@
+redis==5.0.0
+py_zipkin==1.0.0
+requests==2.31.0
+kombu==5.3.4
+celery==5.3.4
+thrift==0.16.0

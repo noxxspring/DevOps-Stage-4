@@ -1,0 +1,78 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-api
+      - todos-api
+      - users-api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`localhost`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Upgrade=websocket"
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Connection=Upgrade"
+      - "traefik.http.routers.frontend.middlewares=websocket-headers"
+  auth-api:
+    build: ./auth-api
+    ports:
+      - "8081:8081"
+    environment:
+      - USERS_API_ADDRESS=http://users-api:8083
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-api.rule=Host(`auth.localhost`)"
+      - "traefik.http.services.auth-api.loadbalancer.server.port=8081"
+      - "traefik.http.routers.auth-api.entrypoints=web"
+  todos-api:
+    build: ./todos-api
+    ports:
+      - "8082:8082"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.todos-api.rule=Host(`todos.localhost`)"
+      - "traefik.http.services.todos-api.loadbalancer.server.port=8082"
+      - "traefik.http.routers.todos-api.entrypoints=web"
+  users-api:
+    build: ./users-api
+    ports:
+      - "8083:8083"
+    environment:
+      - JAVA_OPTS=--add-opens java.base/java.lang=ALL-UNNAMED
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users-api.rule=Host(`users.localhost`)"
+      - "traefik.http.services.users-api.loadbalancer.server.port=8083"
+      - "traefik.http.routers.users-api.entrypoints=web"
+  log-processor:
+    build: ./log-processor
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=log_channel
+      - ZIPKIN_URL=http://zipkin:9411/api/v2/spans
+    depends_on:
+      - redis
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

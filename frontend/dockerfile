@@ -1,0 +1,13 @@
+FROM node:14
+# Set the working directory
+WORKDIR /app
+# Copy package files
+COPY package.json package-lock.json ./
+# Ensure we have npm 8 and use legacy peer deps
+RUN npm install -g npm@8 && npm install --legacy-peer-deps
+# Copy the rest of the app's source code
+COPY . .
+# Expose the port Vue will run on
+EXPOSE 8080
+
+CMD ["npm", "run", "dev"]
